@@ -1,6 +1,6 @@
 services:
   orchard:
-    image: orchard:local
+    image: ghcr.io/bldgblocks/orchard:latest
     container_name: orchard
     environment:
       PORT: 3000
