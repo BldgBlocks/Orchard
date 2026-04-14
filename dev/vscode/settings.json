@@ -1,0 +1,20 @@
+{
+  "editor.semanticHighlighting.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.indentation": true,
+  "editor.stickyScroll.enabled": true,
+  "breadcrumbs.enabled": true,
+  "[vue]": {
+    "editor.defaultFormatter": "vue.volar",
+    "editor.linkedEditing": true,
+    "editor.inlayHints.enabled": "offUnlessPressed",
+    "editor.wordWrap": "off"
+  },
+  "[javascript]": {
+    "editor.inlayHints.enabled": "offUnlessPressed"
+  },
+  "[typescript]": {
+    "editor.inlayHints.enabled": "offUnlessPressed"
+  }
+}

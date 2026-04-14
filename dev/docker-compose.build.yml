@@ -1,0 +1,30 @@
+services:
+  orchard:
+    build:
+      context: ..
+    container_name: orchard
+    environment:
+      PORT: 3000
+      WORK_PATH: /workspace
+      DATA_DIR: /data
+      SCAN_DEPTH: 4
+      MAX_PARALLEL_JOBS: 3
+      DEFAULT_MODE: smart
+      AUTO_REFRESH_SECONDS: 30
+      SCHEDULED_SWEEP_ENABLED: false
+      SCHEDULED_SWEEP_INTERVAL_MINUTES: 360
+      SCHEDULED_SWEEP_MODE: smart
+      SKIP_SELF_PROJECT: true
+      SELF_SERVICE_NAME: orchard
+      SELF_CONTAINER_NAME: orchard
+    ports:
+      - "4747:3000"
+    volumes:
+      # High-privilege mount: lets Orchard talk to the host Docker daemon and run docker/docker compose commands.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/compose:/workspace
+      - orchard-data:/data
+    restart: unless-stopped
+
+volumes:
+  orchard-data:

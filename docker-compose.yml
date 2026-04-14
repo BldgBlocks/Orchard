@@ -1,0 +1,37 @@
+services:
+  orchard:
+    image: orchard:local
+    container_name: orchard
+    environment:
+      PORT: 3000
+      WORK_PATH: /workspace
+      DATA_DIR: /data
+      # How many directory levels Orchard scans under WORK_PATH for compose files.
+      SCAN_DEPTH: 4
+      # How many apps Orchard may process at once during batch actions.
+      MAX_PARALLEL_JOBS: 3
+      # Internal fallback if an action request arrives without a mode.
+      DEFAULT_MODE: smart
+      # Dashboard polling interval, in seconds, for clients that are open.
+      AUTO_REFRESH_SECONDS: 30
+      # Built-in scheduler configuration.
+      SCHEDULED_SWEEP_ENABLED: false
+      SCHEDULED_SWEEP_INTERVAL_MINUTES: 360
+      SCHEDULED_SWEEP_MODE: smart
+      # Queue protections for accidental double-clicks and duplicate bursts.
+      ACTION_QUEUE_LIMIT: 50
+      ACTION_COOLDOWN_MS: 1000
+      # Skip Orchard's own deployment if it appears inside the scanned tree.
+      SKIP_SELF_PROJECT: true
+      SELF_SERVICE_NAME: orchard
+      SELF_CONTAINER_NAME: orchard
+    ports:
+      # Keep Orchard private by default. Put a reverse proxy in front of it for remote access.
+      - "127.0.0.1:4747:3000"
+    volumes:
+      # High-privilege mount: lets Orchard talk to the host Docker daemon and run docker/docker compose commands.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Change this to the host directory that contains the compose apps you want Orchard to manage.
+      - ./workspace:/workspace
+      - ./orchard-data:/data
+    restart: unless-stopped

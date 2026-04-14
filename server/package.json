@@ -1,0 +1,14 @@
+{
+  "name": "compose-orchard-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "nanoid": "^5.1.5",
+    "yaml": "^2.8.3"
+  }
+}
