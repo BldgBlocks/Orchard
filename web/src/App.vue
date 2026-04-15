@@ -74,7 +74,11 @@ const {
           :target-count="targetCount"
           :target-label="targetLabel"
           @run-batch="runBatch"
-        />
+        >
+          <template #side-panel>
+            <ActivityPanel :activity="activity" @cancel="cancelOperation" @copy-rollback="copyRollbackHints" />
+          </template>
+        </BatchControls>
 
         <DashboardToolbar
           v-model:search="search"
@@ -90,33 +94,25 @@ const {
           The current work path is not valid inside the container. Mount the correct host directory and update settings.
         </v-alert>
 
-        <v-row class="mt-4" dense>
-          <v-col cols="12" lg="8">
-            <div class="project-grid">
-              <div v-for="project in filteredProjects" :key="project.id" class="project-cell">
-                <ProjectCard
-                  :busy="isProjectBusy(project.id)"
-                  :disabled="Boolean(config?.skipSelfProject && project.isSelfProject)"
-                  :project="project"
-                  :selected="selectedProjectIds.includes(project.id)"
-                  @action="runProjectAction"
-                  @copy-shell="copyShellCommand"
-                  @toggle-select="toggleSelection"
-                />
-              </div>
-            </div>
+        <div class="project-grid mt-4">
+          <div v-for="project in filteredProjects" :key="project.id" class="project-cell">
+            <ProjectCard
+              :busy="isProjectBusy(project.id)"
+              :disabled="Boolean(config?.skipSelfProject && project.isSelfProject)"
+              :project="project"
+              :selected="selectedProjectIds.includes(project.id)"
+              @action="runProjectAction"
+              @copy-shell="copyShellCommand"
+              @toggle-select="toggleSelection"
+            />
+          </div>
+        </div>
 
-            <v-card v-if="!filteredProjects.length" class="empty-card mt-2">
-              <v-icon icon="mdi-folder-search-outline" size="42" />
-              <h3>No apps match the current filters.</h3>
-              <p>Change the work path, widen the search depth, or clear the search query.</p>
-            </v-card>
-          </v-col>
-
-          <v-col cols="12" lg="4">
-            <ActivityPanel :activity="activity" @cancel="cancelOperation" @copy-rollback="copyRollbackHints" />
-          </v-col>
-        </v-row>
+        <v-card v-if="!filteredProjects.length" class="empty-card mt-2">
+          <v-icon icon="mdi-folder-search-outline" size="42" />
+          <h3>No apps match the current filters.</h3>
+          <p>Change the work path, widen the search depth, or clear the search query.</p>
+        </v-card>
       </v-container>
 
       <SettingsDialog
@@ -143,7 +139,7 @@ const {
 
 .project-grid {
   column-gap: 0.9rem;
-  column-width: 250px;
+  column-width: 220px;
 }
 
 .project-cell {
@@ -174,7 +170,7 @@ const {
 
 @media (max-width: 1260px) {
   .project-grid {
-    column-width: 230px;
+    column-width: 210px;
   }
 }
 

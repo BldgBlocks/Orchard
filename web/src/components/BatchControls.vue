@@ -63,24 +63,28 @@ defineEmits(['run-batch']);
     </v-col>
 
     <v-col cols="12" lg="4">
-      <v-card class="action-card transparency-card">
-        <p class="eyebrow">Simply</p>
-        <h2>No labels. No bloat.</h2>
-        <div class="transparency-list">
-          <div>
-            <strong>App-first discovery</strong>
-            <p>It groups compose folders under one top-level app instead of flooding the UI with every internal compose folder.</p>
+      <div class="side-stack">
+        <v-card class="action-card transparency-card">
+          <p class="eyebrow">Simply</p>
+          <h2>No labels. No bloat.</h2>
+          <div class="transparency-list">
+            <div>
+              <strong>App-first discovery</strong>
+              <p>It groups compose folders under one top-level app instead of flooding the UI with every internal compose folder.</p>
+            </div>
+            <div>
+              <strong>Built-in scheduling</strong>
+              <p>Automatic sweeps use an internal timer in this app, no outside timing required.</p>
+            </div>
+            <div>
+              <strong>Live command logs</strong>
+              <p>Every pull, down, and up step is streamed into the UI while it runs.</p>
+            </div>
           </div>
-          <div>
-            <strong>Built-in scheduling</strong>
-            <p>Automatic sweeps use an internal timer in this app, no outside timing required.</p>
-          </div>
-          <div>
-            <strong>Live command logs</strong>
-            <p>Every pull, down, and up step is streamed into the UI while it runs.</p>
-          </div>
-        </div>
-      </v-card>
+        </v-card>
+
+        <slot name="side-panel" />
+      </div>
     </v-col>
   </v-row>
 </template>
@@ -147,6 +151,11 @@ defineEmits(['run-batch']);
 .transparency-list p {
   margin: 0.2rem 0 0;
   opacity: 0.82;
+}
+
+.side-stack {
+  display: grid;
+  gap: 1rem;
 }
 
 .eyebrow {
