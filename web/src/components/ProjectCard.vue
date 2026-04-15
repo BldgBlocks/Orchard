@@ -22,7 +22,7 @@ const props = defineProps({
   },
 });
 
-defineEmits(['action', 'copy-shell', 'copy-self-update', 'toggle-select']);
+defineEmits(['action', 'toggle-select']);
 
 function isProjectStopped() {
   return Number(props.project.runningServices || 0) === 0;
@@ -139,34 +139,15 @@ const actionDisabled = computed(() => props.busy || props.disabled || props.proj
     </v-alert>
     <v-alert
       v-else-if="project.isSelfProject"
-      class="mt-4"
+      class="mt-4 self-project-note"
       density="comfortable"
       type="info"
       variant="tonal"
     >
-      Orchard cannot safely redeploy its own container from inside this UI. Use the dedicated self-update command below from an external terminal.
+      Orchard cannot safely redeploy its own container from inside this UI.
     </v-alert>
 
     <div class="action-row">
-      <v-btn
-        color="brown"
-        size="small"
-        title="Copy a relative shell command for this app folder so you can paste it into a terminal already opened at the workspace root."
-        variant="text"
-        @click="$emit('copy-shell', project)"
-      >
-        Terminal
-      </v-btn>
-      <v-btn
-        v-if="project.isSelfProject"
-        color="accent"
-        size="small"
-        title="Copy a safe external command for updating Orchard from a terminal outside Orchard itself."
-        variant="tonal"
-        @click="$emit('copy-self-update', project)"
-      >
-        Self Update Cmd
-      </v-btn>
       <v-btn
         :disabled="actionDisabled"
         color="primary"
@@ -330,6 +311,10 @@ const actionDisabled = computed(() => props.busy || props.disabled || props.proj
 .summary-empty {
   font-size: 0.74rem;
   opacity: 0.72;
+}
+
+.self-project-note {
+  font-size: 0.82rem;
 }
 
 @media (max-width: 720px) {

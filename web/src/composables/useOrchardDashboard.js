@@ -359,28 +359,6 @@ export function useOrchardDashboard() {
     return busyProjectIds.value.has(projectId);
   }
 
-  async function copyShellCommand(project) {
-    const command = `cd "${project.shellPath || './'}"`;
-
-    try {
-      await navigator.clipboard.writeText(command);
-      notify(`Copied shell command for ${project.name}.`, 'success');
-    } catch {
-      notify(`Clipboard access failed. Use: ${command}`, 'warning');
-    }
-  }
-
-  async function copySelfUpdateCommand(project) {
-    const command = `cd "${project.shellPath || './'}" && docker compose pull && docker compose up -d --remove-orphans`;
-
-    try {
-      await navigator.clipboard.writeText(command);
-      notify(`Copied self-update command for ${project.name}.`, 'success');
-    } catch {
-      notify(`Clipboard access failed. Use: ${command}`, 'warning');
-    }
-  }
-
   function formatRollbackHintsEntry(entry) {
     const lines = [];
 
@@ -500,8 +478,6 @@ export function useOrchardDashboard() {
     clearSelection,
     config,
     copyRollbackHints,
-    copyShellCommand,
-    copySelfUpdateCommand,
     dockerStatusText,
     filteredProjects,
     health,
