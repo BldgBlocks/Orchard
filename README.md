@@ -123,5 +123,5 @@ Development-only helpers now live under `dev/`.
 - Mutating API routes require explicit JSON requests from the Orchard UI and are intentionally not designed as a general integration surface.
 - If a compose app depends on local `.env` files or relative paths, Orchard runs commands from that compose directory so behavior matches normal shell usage.
 - Orchard passes only Docker and basic client environment variables to `docker compose`. If a managed app depends on custom environment values, put them in that app's own `.env` file or compose manifest instead of relying on Orchard container environment inheritance.
-- If Orchard discovers its own deployment and self-skip is enabled, it will clearly mark itself and skip it.
+- Orchard does not redeploy its own container from inside the UI. For Orchard itself, use an external terminal in its compose folder or the local deploy helper.
 - The root of this repo is now deployment-first; local source-workflow helpers are intentionally kept in `dev/`.

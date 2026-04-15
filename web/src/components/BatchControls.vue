@@ -22,9 +22,9 @@ defineEmits(['run-batch']);
 </script>
 
 <template>
-  <v-row class="mt-3" dense>
-    <v-col cols="12" lg="8">
-      <v-card class="action-card">
+  <div class="control-layout mt-3">
+    <div class="control-main">
+      <v-card class="action-card stretch-card">
         <div class="section-header">
           <div>
             <p class="eyebrow">Batch Controls</p>
@@ -60,9 +60,9 @@ defineEmits(['run-batch']);
           </v-card>
         </div>
       </v-card>
-    </v-col>
+    </div>
 
-    <v-col cols="12" lg="4">
+    <div class="control-side">
       <div class="side-stack">
         <v-card class="action-card transparency-card">
           <p class="eyebrow">Simply</p>
@@ -85,11 +85,23 @@ defineEmits(['run-batch']);
 
         <slot name="side-panel" />
       </div>
-    </v-col>
-  </v-row>
+    </div>
+  </div>
 </template>
 
 <style scoped>
+.control-layout {
+  align-items: stretch;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+}
+
+.control-main,
+.control-side {
+  min-width: 0;
+}
+
 .action-card {
   backdrop-filter: blur(20px);
   background: var(--orchard-panel-bg);
@@ -97,6 +109,10 @@ defineEmits(['run-batch']);
   border-radius: 28px;
   box-shadow: var(--orchard-panel-shadow);
   padding: 1.25rem;
+}
+
+.stretch-card {
+  height: 100%;
 }
 
 .section-header {
@@ -156,6 +172,7 @@ defineEmits(['run-batch']);
 .side-stack {
   display: grid;
   gap: 1rem;
+  height: 100%;
 }
 
 .eyebrow {
@@ -165,6 +182,12 @@ defineEmits(['run-batch']);
   margin: 0;
   opacity: 0.65;
   text-transform: uppercase;
+}
+
+@media (max-width: 1280px) {
+  .control-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 780px) {

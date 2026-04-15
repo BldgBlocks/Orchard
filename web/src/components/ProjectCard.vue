@@ -22,7 +22,7 @@ const props = defineProps({
   },
 });
 
-defineEmits(['action', 'copy-shell', 'toggle-select']);
+defineEmits(['action', 'copy-shell', 'copy-self-update', 'toggle-select']);
 
 function isProjectStopped() {
   return Number(props.project.runningServices || 0) === 0;
@@ -43,6 +43,9 @@ const hiddenServiceCount = computed(() => {
   const services = props.project.services || [];
   return Math.max(services.length - visibleServices.value.length, 0);
 });
+
+const selectionDisabled = computed(() => props.busy || props.disabled || props.project.isSelfProject);
+const actionDisabled = computed(() => props.busy || props.disabled || props.project.isSelfProject);
 </script>
 
 <template>
@@ -67,7 +70,7 @@ const hiddenServiceCount = computed(() => {
       </div>
 
       <v-checkbox-btn
-        :disabled="busy || disabled"
+        :disabled="selectionDisabled"
         :model-value="selected"
         title="Add or remove this app from the current batch selection."
         @update:model-value="$emit('toggle-select', project.id)"
@@ -127,13 +130,13 @@ const hiddenServiceCount = computed(() => {
       {{ project.error }}
     </v-alert>
     <v-alert
-      v-else-if="disabled && project.isSelfProject"
+      v-else-if="project.isSelfProject"
       class="mt-4"
       density="comfortable"
       type="info"
       variant="tonal"
     >
-      Self-skip is enabled, so Orchard will not queue its own app deployment.
+      Orchard cannot safely redeploy its own container from inside this UI. Use the dedicated self-update command below from an external terminal.
     </v-alert>
 
     <div class="action-row">
@@ -147,7 +150,17 @@ const hiddenServiceCount = computed(() => {
         Terminal
       </v-btn>
       <v-btn
-        :disabled="busy || disabled"
+        v-if="project.isSelfProject"
+        color="accent"
+        size="small"
+        title="Copy a safe external command for updating Orchard from a terminal outside Orchard itself."
+        variant="tonal"
+        @click="$emit('copy-self-update', project)"
+      >
+        Self Update Cmd
+      </v-btn>
+      <v-btn
+        :disabled="actionDisabled"
         color="primary"
         size="small"
         title="Check for new image layers, then update this app only if new images were pulled."
@@ -156,7 +169,7 @@ const hiddenServiceCount = computed(() => {
         Smart Sweep
       </v-btn>
       <v-btn
-        :disabled="busy || disabled"
+        :disabled="actionDisabled"
         color="secondary"
         size="small"
         title="Always pull images, then update this app."
@@ -166,7 +179,7 @@ const hiddenServiceCount = computed(() => {
         Force Update
       </v-btn>
       <v-btn
-        :disabled="busy || disabled"
+        :disabled="actionDisabled"
         color="warning"
         size="small"
         title="Restart this app without pulling images first."
@@ -176,7 +189,7 @@ const hiddenServiceCount = computed(() => {
         Restart Only
       </v-btn>
       <v-btn
-        :disabled="busy || disabled"
+        :disabled="actionDisabled"
         color="success"
         size="small"
         title="Start this app by running docker compose up -d in each compose folder for the app."
@@ -186,7 +199,7 @@ const hiddenServiceCount = computed(() => {
         Start
       </v-btn>
       <v-btn
-        :disabled="busy || disabled || !canStopProject()"
+        :disabled="actionDisabled || !canStopProject()"
         color="error"
         size="small"
         :title="canStopProject()

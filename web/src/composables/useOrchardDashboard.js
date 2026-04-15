@@ -370,6 +370,17 @@ export function useOrchardDashboard() {
     }
   }
 
+  async function copySelfUpdateCommand(project) {
+    const command = `cd "${project.shellPath || './'}" && docker compose pull && docker compose up -d --remove-orphans`;
+
+    try {
+      await navigator.clipboard.writeText(command);
+      notify(`Copied self-update command for ${project.name}.`, 'success');
+    } catch {
+      notify(`Clipboard access failed. Use: ${command}`, 'warning');
+    }
+  }
+
   function formatRollbackHintsEntry(entry) {
     const lines = [];
 
@@ -490,6 +501,7 @@ export function useOrchardDashboard() {
     config,
     copyRollbackHints,
     copyShellCommand,
+    copySelfUpdateCommand,
     dockerStatusText,
     filteredProjects,
     health,

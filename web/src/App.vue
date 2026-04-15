@@ -17,6 +17,7 @@ const {
   config,
   copyRollbackHints,
   copyShellCommand,
+  copySelfUpdateCommand,
   dockerStatusText,
   filteredProjects,
   health,
@@ -103,6 +104,7 @@ const {
               :selected="selectedProjectIds.includes(project.id)"
               @action="runProjectAction"
               @copy-shell="copyShellCommand"
+              @copy-self-update="copySelfUpdateCommand"
               @toggle-select="toggleSelection"
             />
           </div>
