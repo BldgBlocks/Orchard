@@ -26,6 +26,7 @@ function serializeOperation(operation) {
     finishedAt: operation.finishedAt || null,
     total: operation.total,
     completed: operation.completed,
+    updated: operation.updated || 0,
     failed: operation.failed,
     projects: Object.values(operation.projects).sort((left, right) =>
       left.name.localeCompare(right.name),
@@ -115,6 +116,7 @@ export function createOperation({ id, label, kind, mode, projects }) {
     finishedAt: null,
     total: projects.length,
     completed: 0,
+    updated: 0,
     failed: 0,
     logs: [],
     projects: Object.fromEntries(

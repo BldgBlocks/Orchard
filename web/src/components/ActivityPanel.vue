@@ -95,7 +95,7 @@ function operationProgressText(entry) {
     return `${entry.completed}/${entry.total} apps complete`;
   }
 
-  return `${entry.completed}/${entry.total} apps updated`;
+  return `${entry.completed}/${entry.total} processed, ${entry.updated ?? 0} updated`;
 }
 </script>
 

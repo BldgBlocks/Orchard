@@ -303,12 +303,17 @@ async function processProject({ operationId, project, mode, signal }) {
 
 async function executeOperation({ operationId, projects, mode, concurrency, signal }) {
   let completed = 0;
+  let updated = 0;
   let failed = 0;
   let cancelled = false;
 
   await runQueue(projects, concurrency, signal, async (project) => {
     const outcome = await processProject({ operationId, project, mode, signal });
     completed += 1;
+
+    if (outcome === 'completed') {
+      updated += 1;
+    }
 
     if (outcome === 'failed') {
       failed += 1;
@@ -320,6 +325,7 @@ async function executeOperation({ operationId, projects, mode, concurrency, sign
 
     updateOperation(operationId, (operation) => {
       operation.completed = completed;
+      operation.updated = updated;
       operation.failed = failed;
       operation.status = cancelled ? 'cancelled' : 'running';
     });
@@ -327,6 +333,7 @@ async function executeOperation({ operationId, projects, mode, concurrency, sign
 
   await finalizeOperation(operationId, (operation) => {
     operation.completed = completed;
+    operation.updated = updated;
     operation.failed = failed;
     operation.status = signal.aborted || cancelled
       ? 'cancelled'
