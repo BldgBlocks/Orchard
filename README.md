@@ -58,24 +58,27 @@ sudo docker compose up -d --remove-orphans
 
 ## Deploy helper
 
-[deploy.sh](deploy.sh) is a convenience script for the deployment flow.
+[deploy.sh](deploy.sh) is now a convenience script for spinning up a local parallel test instance.
 
 It:
 
 1. builds the image
-2. optionally syncs the deployment compose file
-3. restarts the deployment
+2. writes a small test-instance compose file into a separate deploy folder
+3. restarts that test deployment on its own port
+4. prints the local URL when it is ready
 
 Example:
 
 ```bash
-./deploy.sh --deploy-dir ~/Orchard
+./deploy.sh
 ```
 
-If you also want to overwrite the external compose file with the current template:
+That defaults to a separate instance under `~/Services/Orchard-dev` on `http://127.0.0.1:4748`.
+
+If you want a different test folder or port:
 
 ```bash
-./deploy.sh --deploy-dir ~/Orchard --sync-compose
+./deploy.sh --deploy-dir ~/Services/Orchard-playground --host-port 4749 --container-name orchard-playground
 ```
 
 ## Settings that matter most
