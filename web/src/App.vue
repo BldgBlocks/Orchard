@@ -30,7 +30,9 @@ const {
   schedulerNextRunLabel,
   schedulerSummary,
   search,
+  selectableFilteredProjects,
   selectedProjectIds,
+  selectVisibleProjects,
   settingsOpen,
   snackbar,
   statCards,
@@ -77,8 +79,10 @@ const {
           v-model:search="search"
           v-model:status-filter="statusFilter"
           :has-selection="selectedProjectIds.length > 0"
+          :has-visible-projects="selectableFilteredProjects.length > 0"
           :status-options="statusOptions"
           @clear-selection="clearSelection"
+          @select-visible="selectVisibleProjects"
         />
 
         <v-alert v-if="validation && !validation.ok" class="mt-4" type="warning" variant="tonal">

@@ -16,9 +16,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  hasVisibleProjects: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selection']);
+const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selection', 'select-visible']);
 </script>
 
 <template>
@@ -47,6 +51,16 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
         @click="emit('clear-selection')"
       >
         Clear saved targets
+      </v-btn>
+    </div>
+    <div class="toolbar-actions">
+      <v-btn
+        :disabled="!hasVisibleProjects"
+        title="Select every currently visible app after search and status filters are applied."
+        variant="text"
+        @click="emit('select-visible')"
+      >
+        Select visible
       </v-btn>
     </div>
     <p class="toolbar-note">
@@ -81,9 +95,23 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
   opacity: 0.72;
 }
 
+.toolbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 780px) {
   .toolbar-row {
     flex-direction: column;
+  }
+
+  .toolbar-actions {
+    justify-content: stretch;
+  }
+
+  .toolbar-actions > * {
+    width: 100%;
   }
 
   .toolbar-card {

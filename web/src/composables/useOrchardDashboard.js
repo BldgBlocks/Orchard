@@ -143,6 +143,10 @@ export function useOrchardDashboard() {
     });
   });
 
+  const selectableFilteredProjects = computed(() =>
+    filteredProjects.value.filter((project) => !(config.value?.skipSelfProject && project.isSelfProject)),
+  );
+
   const counts = computed(() => ({
     total: projects.value.length,
     healthy: projects.value.filter((project) => project.status === 'healthy').length,
@@ -345,6 +349,12 @@ export function useOrchardDashboard() {
     void persistBatchTargets([]);
   }
 
+  function selectVisibleProjects() {
+    const nextSelection = selectableFilteredProjects.value.map((project) => project.id);
+    selectedProjectIds.value = nextSelection;
+    void persistBatchTargets(nextSelection);
+  }
+
   function isProjectBusy(projectId) {
     return busyProjectIds.value.has(projectId);
   }
@@ -466,7 +476,9 @@ export function useOrchardDashboard() {
     schedulerNextRunLabel,
     schedulerSummary,
     search,
+    selectableFilteredProjects,
     selectedProjectIds,
+    selectVisibleProjects,
     settingsOpen,
     snackbar,
     statCards,
