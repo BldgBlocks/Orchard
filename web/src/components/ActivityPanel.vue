@@ -89,6 +89,14 @@ function rollbackHints(project) {
 function totalRollbackHints(entry) {
   return (entry.projects || []).reduce((sum, project) => sum + rollbackHints(project).length, 0);
 }
+
+function operationProgressText(entry) {
+  if (entry.mode === 'start-only' || entry.mode === 'stop-only') {
+    return `${entry.completed}/${entry.total} apps complete`;
+  }
+
+  return `${entry.completed}/${entry.total} apps updated`;
+}
 </script>
 
 <template>
@@ -112,7 +120,7 @@ function totalRollbackHints(entry) {
               <strong>{{ operation.label }}</strong>
             </div>
             <p class="text-medium-emphasis mt-2 mb-0">
-              {{ modeLabel(operation.mode) }} · {{ operation.completed }}/{{ operation.total }} apps complete · started {{ formatTime(operation.startedAt) }}
+              {{ modeLabel(operation.mode) }} · {{ operationProgressText(operation) }} · started {{ formatTime(operation.startedAt) }}
             </p>
             <p v-if="totalRollbackHints(operation)" class="text-medium-emphasis mt-1 mb-0">
               Rollback hints captured for {{ totalRollbackHints(operation) }} service{{ totalRollbackHints(operation) === 1 ? '' : 's' }}.
@@ -251,7 +259,7 @@ function totalRollbackHints(entry) {
 
         <v-list-item-title>{{ entry.label }}</v-list-item-title>
         <v-list-item-subtitle>
-          {{ modeLabel(entry.mode) }} · {{ entry.completed }}/{{ entry.total }} apps complete · {{ entry.failed }} failed · finished {{ formatTime(entry.finishedAt || entry.startedAt) }}
+          {{ modeLabel(entry.mode) }} · {{ operationProgressText(entry) }} · {{ entry.failed }} failed · finished {{ formatTime(entry.finishedAt || entry.startedAt) }}
         </v-list-item-subtitle>
 
         <template v-if="totalRollbackHints(entry)" #append>
