@@ -1,8 +1,15 @@
 import { nanoid } from 'nanoid';
 
-import { discoverProjects, hasImageUpdates, runComposeCommand, sanitizeSensitiveText } from './projects.js';
+import {
+  captureComposeRollbackSnapshot,
+  discoverProjects,
+  hasImageUpdates,
+  runComposeCommand,
+  sanitizeSensitiveText,
+} from './projects.js';
 import {
   appendOperationLog,
+  appendProjectRollbackHints,
   createOperation,
   finalizeOperation,
   getActiveOperationMetadata,
@@ -55,6 +62,22 @@ function composeTargetLabel(app, composeTarget) {
   return `${app.name} · ${composeTarget.relativePath}`;
 }
 
+function buildRollbackHints(targetLabel, beforeSnapshot = [], afterSnapshot = []) {
+  const beforeByService = new Map(beforeSnapshot.map((entry) => [entry.service, entry.image]));
+  const afterByService = new Map(afterSnapshot.map((entry) => [entry.service, entry.image]));
+  const serviceNames = [...new Set([...beforeByService.keys(), ...afterByService.keys()])]
+    .sort((left, right) => left.localeCompare(right));
+
+  return serviceNames
+    .map((service) => ({
+      targetLabel,
+      service,
+      beforeImage: beforeByService.get(service) || 'unknown',
+      afterImage: afterByService.get(service) || 'unknown',
+    }))
+    .filter((hint) => hint.beforeImage !== hint.afterImage);
+}
+
 async function runQueue(items, limit, signal, worker) {
   let cursor = 0;
 
@@ -81,6 +104,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
 
   const targetLabel = composeTargetLabel(app, composeTarget);
   const wasRunning = Number(composeTarget.runningServices || 0) > 0;
+  let beforeSnapshot = [];
 
   try {
     let shouldRestart = false;
@@ -110,6 +134,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
       appendProjectLog(operationId, app, `${targetLabel}: skipping pull and restarting the compose stack.`);
       shouldRestart = true;
     } else if (mode === 'force-update') {
+      beforeSnapshot = await captureComposeRollbackSnapshot(composeTarget, { signal });
       appendProjectLog(operationId, app, `${targetLabel}: pulling latest images before restart.`);
       await runComposeCommand(composeTarget.absolutePath, ['pull', '-q'], {
         signal,
@@ -123,6 +148,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
 
       shouldRestart = true;
     } else {
+      beforeSnapshot = await captureComposeRollbackSnapshot(composeTarget, { signal });
       appendProjectLog(operationId, app, `${targetLabel}: checking for image updates.`);
       const pullResult = await runComposeCommand(composeTarget.absolutePath, ['pull'], {
         signal,
@@ -167,6 +193,20 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
       signal,
       onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
     });
+
+    if (beforeSnapshot.length > 0) {
+      const afterSnapshot = await captureComposeRollbackSnapshot(composeTarget, { signal });
+      const rollbackHints = buildRollbackHints(targetLabel, beforeSnapshot, afterSnapshot);
+
+      if (rollbackHints.length > 0) {
+        appendProjectRollbackHints(operationId, app.id, rollbackHints);
+        appendProjectLog(
+          operationId,
+          app,
+          `${targetLabel}: captured rollback hints for ${rollbackHints.length} service${rollbackHints.length === 1 ? '' : 's'}.`,
+        );
+      }
+    }
 
     appendProjectLog(operationId, app, `${targetLabel}: compose folder completed successfully.`);
     return 'completed';

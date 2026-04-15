@@ -15,6 +15,7 @@ const {
   cancelOperation,
   clearSelection,
   config,
+  copyRollbackHints,
   copyShellCommand,
   dockerStatusText,
   filteredProjects,
@@ -113,7 +114,7 @@ const {
           </v-col>
 
           <v-col cols="12" lg="4">
-            <ActivityPanel :activity="activity" @cancel="cancelOperation" />
+            <ActivityPanel :activity="activity" @cancel="cancelOperation" @copy-rollback="copyRollbackHints" />
           </v-col>
         </v-row>
       </v-container>

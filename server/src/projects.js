@@ -129,12 +129,18 @@ async function inspectComposeManifest(project) {
     const services = parsed.services && typeof parsed.services === 'object'
       ? parsed.services
       : {};
+    const declaredImages = Object.fromEntries(
+      Object.entries(services)
+        .filter(([, serviceConfig]) => typeof serviceConfig?.image === 'string' && serviceConfig.image.trim())
+        .map(([serviceName, serviceConfig]) => [serviceName, sanitizeSensitiveText(serviceConfig.image.trim())]),
+    );
 
     for (const [serviceName, serviceConfig] of Object.entries(services)) {
       if (serviceName === SELF_SERVICE_NAME) {
         return {
           isSelfProject: true,
           selfProjectReason: `Service name matches ${SELF_SERVICE_NAME}.`,
+          declaredImages,
         };
       }
 
@@ -142,9 +148,16 @@ async function inspectComposeManifest(project) {
         return {
           isSelfProject: true,
           selfProjectReason: `container_name matches ${SELF_CONTAINER_NAME}.`,
+          declaredImages,
         };
       }
     }
+
+    return {
+      isSelfProject: false,
+      selfProjectReason: null,
+      declaredImages,
+    };
   } catch {
     // Ignore manifest parsing errors here; command-level inspection still proceeds.
   }
@@ -152,6 +165,7 @@ async function inspectComposeManifest(project) {
   return {
     isSelfProject: false,
     selfProjectReason: null,
+    declaredImages: {},
   };
 }
 
@@ -202,11 +216,24 @@ function normalizeContainer(rawContainer) {
     id: rawContainer.ID || rawContainer.id || '',
     name: rawContainer.Name || rawContainer.name || '',
     service: rawContainer.Service || rawContainer.service || '',
+    image: rawContainer.Image || rawContainer.image || '',
+    imageId: rawContainer.ImageID || rawContainer.imageID || rawContainer.imageId || '',
     state: String(rawContainer.State || rawContainer.state || '').toLowerCase(),
     health: String(rawContainer.Health || rawContainer.health || '').toLowerCase(),
     statusText: rawContainer.Status || rawContainer.status || rawContainer.State || 'unknown',
     exitCode: Number(rawContainer.ExitCode || rawContainer.exitCode || 0),
   };
+}
+
+function formatImageReference(container) {
+  const image = sanitizeSensitiveText(container.image || '');
+  const imageId = sanitizeSensitiveText(container.imageId || '').replace(/^sha256:/, '').slice(0, 12);
+
+  if (image && imageId) {
+    return `${image} @ ${imageId}`;
+  }
+
+  return image || imageId || '';
 }
 
 function summarizeService(serviceName, containers = []) {
@@ -661,14 +688,54 @@ export async function discoverProjects(settings) {
   return aggregateApps(rootPath, enrichedProjects);
 }
 
+export async function captureComposeRollbackSnapshot(composeTarget, { signal } = {}) {
+  const psResult = await runComposeCommand(composeTarget.absolutePath, ['ps', '-a', '--format', 'json'], {
+    signal,
+  }).catch(toCommandResult);
+
+  const containers = psResult.ok
+    ? parsePsOutput(psResult.stdout || psResult.combinedOutput).map(normalizeContainer)
+    : [];
+  const imagesByService = new Map();
+
+  for (const container of containers) {
+    const serviceName = container.service || container.name || 'service';
+    const imageReference = formatImageReference(container);
+    if (!imageReference) {
+      continue;
+    }
+
+    if (!imagesByService.has(serviceName)) {
+      imagesByService.set(serviceName, new Set());
+    }
+
+    imagesByService.get(serviceName).add(imageReference);
+  }
+
+  const serviceNames = new Set([
+    ...Object.keys(composeTarget.declaredImages || {}),
+    ...imagesByService.keys(),
+  ]);
+
+  return Array.from(serviceNames)
+    .sort((left, right) => left.localeCompare(right))
+    .map((service) => ({
+      service,
+      image: imagesByService.has(service)
+        ? Array.from(imagesByService.get(service)).sort((left, right) => left.localeCompare(right)).join(' | ')
+        : sanitizeSensitiveText(composeTarget.declaredImages?.[service] || ''),
+    }))
+    .filter((entry) => entry.image);
+}
+
 export function sanitizeProjectsForClient(projects) {
   return projects.map((project) => {
-    const { absolutePath: _absolutePath, composeDirectories, ...rest } = project;
+    const { absolutePath: _absolutePath, declaredImages: _declaredImages, composeDirectories, ...rest } = project;
 
     return {
       ...rest,
       shellPath: toShellPath(project.relativePath),
-      composeDirectories: (composeDirectories || []).map(({ absolutePath: _composeAbsolutePath, ...entry }) => entry),
+      composeDirectories: (composeDirectories || []).map(({ absolutePath: _composeAbsolutePath, declaredImages: _entryDeclaredImages, ...entry }) => entry),
     };
   });
 }

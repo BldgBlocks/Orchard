@@ -124,6 +124,7 @@ export function createOperation({ id, label, kind, mode, projects }) {
           id: project.id,
           name: project.name,
           relativePath: project.relativePath,
+          rollbackHints: [],
           status: 'queued',
           summary: 'Waiting for its turn.',
           startedAt: null,
@@ -160,6 +161,35 @@ export function updateProjectState(operationId, projectId, patch) {
     operation.projects[projectId] = {
       ...currentProject,
       ...patch,
+    };
+  });
+}
+
+export function appendProjectRollbackHints(operationId, projectId, rollbackHints) {
+  return updateOperation(operationId, (operation) => {
+    const currentProject = operation.projects[projectId];
+    if (!currentProject || !Array.isArray(rollbackHints) || rollbackHints.length === 0) {
+      return;
+    }
+
+    const existingHints = Array.isArray(currentProject.rollbackHints)
+      ? currentProject.rollbackHints
+      : [];
+    const mergedHints = new Map(
+      existingHints.map((hint) => [`${hint.targetLabel}::${hint.service}`, hint]),
+    );
+
+    for (const hint of rollbackHints) {
+      mergedHints.set(`${hint.targetLabel}::${hint.service}`, hint);
+    }
+
+    operation.projects[projectId] = {
+      ...currentProject,
+      rollbackHints: Array.from(mergedHints.values()).sort((left, right) => {
+        const leftKey = `${left.targetLabel}::${left.service}`;
+        const rightKey = `${right.targetLabel}::${right.service}`;
+        return leftKey.localeCompare(rightKey);
+      }),
     };
   });
 }

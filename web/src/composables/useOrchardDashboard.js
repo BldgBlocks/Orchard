@@ -370,6 +370,35 @@ export function useOrchardDashboard() {
     }
   }
 
+  function formatRollbackHintsEntry(entry) {
+    const lines = [];
+
+    for (const project of entry.projects || []) {
+      for (const hint of project.rollbackHints || []) {
+        lines.push(`${project.name} | ${hint.targetLabel} | ${hint.service}\n  before: ${hint.beforeImage}\n  after:  ${hint.afterImage}`);
+      }
+    }
+
+    return lines;
+  }
+
+  async function copyRollbackHints(entry) {
+    const lines = formatRollbackHintsEntry(entry);
+    if (lines.length === 0) {
+      notify('No rollback hints were captured for this run.', 'warning');
+      return;
+    }
+
+    const text = [`${entry.label}`, `Mode: ${entry.mode}`, '', ...lines].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      notify('Copied rollback hints.', 'success');
+    } catch {
+      notify('Clipboard access failed while copying rollback hints.', 'warning');
+    }
+  }
+
   async function runAction(mode, projectIds = []) {
     if (actionsDisabled.value) {
       notify('Mount the Docker socket and a valid work path before running actions.', 'warning');
@@ -459,6 +488,7 @@ export function useOrchardDashboard() {
     cancelOperation,
     clearSelection,
     config,
+    copyRollbackHints,
     copyShellCommand,
     dockerStatusText,
     filteredProjects,

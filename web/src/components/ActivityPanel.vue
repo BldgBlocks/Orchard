@@ -10,7 +10,7 @@ defineProps({
   },
 });
 
-defineEmits(['cancel']);
+defineEmits(['cancel', 'copy-rollback']);
 
 const selectedTabs = reactive({});
 
@@ -81,6 +81,14 @@ function visibleLogs(operation, tab) {
 function appSummary(operation, appName) {
   return (operation.projects || []).find((project) => project.name === appName) || null;
 }
+
+function rollbackHints(project) {
+  return project?.rollbackHints || [];
+}
+
+function totalRollbackHints(entry) {
+  return (entry.projects || []).reduce((sum, project) => sum + rollbackHints(project).length, 0);
+}
 </script>
 
 <template>
@@ -106,17 +114,32 @@ function appSummary(operation, appName) {
             <p class="text-medium-emphasis mt-2 mb-0">
               {{ modeLabel(operation.mode) }} · {{ operation.completed }}/{{ operation.total }} apps complete · started {{ formatTime(operation.startedAt) }}
             </p>
+            <p v-if="totalRollbackHints(operation)" class="text-medium-emphasis mt-1 mb-0">
+              Rollback hints captured for {{ totalRollbackHints(operation) }} service{{ totalRollbackHints(operation) === 1 ? '' : 's' }}.
+            </p>
           </div>
 
-          <v-btn
-            color="error"
-            size="small"
-            title="Request cancellation for this active operation. Already running commands may finish their current step first."
-            variant="text"
-            @click="$emit('cancel', operation.id)"
-          >
-            Cancel
-          </v-btn>
+          <div class="d-flex ga-2 flex-wrap justify-end">
+            <v-btn
+              v-if="totalRollbackHints(operation)"
+              color="brown"
+              size="small"
+              title="Copy the captured before and after image references for this run."
+              variant="text"
+              @click="$emit('copy-rollback', operation)"
+            >
+              Copy rollback hints
+            </v-btn>
+            <v-btn
+              color="error"
+              size="small"
+              title="Request cancellation for this active operation. Already running commands may finish their current step first."
+              variant="text"
+              @click="$emit('cancel', operation.id)"
+            >
+              Cancel
+            </v-btn>
+          </div>
         </div>
 
         <v-progress-linear class="mt-4" color="primary" :model-value="progress(operation)" rounded />
@@ -147,6 +170,15 @@ function appSummary(operation, appName) {
                   <StatusChip :status="project.status" />
                 </div>
                 <p class="summary-text">{{ project.summary }}</p>
+                <div v-if="rollbackHints(project).length" class="rollback-list">
+                  <div v-for="hint in rollbackHints(project).slice(0, 3)" :key="`${hint.targetLabel}-${hint.service}`" class="rollback-row">
+                    <strong>{{ hint.service }}</strong>
+                    <span class="rollback-arrow">{{ hint.beforeImage }} -> {{ hint.afterImage }}</span>
+                  </div>
+                  <p v-if="rollbackHints(project).length > 3" class="rollback-more">
+                    +{{ rollbackHints(project).length - 3 }} more captured rollback hint{{ rollbackHints(project).length - 3 === 1 ? '' : 's' }}.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -174,6 +206,12 @@ function appSummary(operation, appName) {
                   <StatusChip :status="appSummary(operation, source)?.status || 'unknown'" />
                 </div>
                 <p class="summary-text">{{ appSummary(operation, source)?.summary || 'Waiting for activity.' }}</p>
+                <div v-if="rollbackHints(appSummary(operation, source)).length" class="rollback-list">
+                  <div v-for="hint in rollbackHints(appSummary(operation, source)).slice(0, 4)" :key="`${hint.targetLabel}-${hint.service}`" class="rollback-row">
+                    <strong>{{ hint.service }}</strong>
+                    <span class="rollback-arrow">{{ hint.beforeImage }} -> {{ hint.afterImage }}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -215,6 +253,18 @@ function appSummary(operation, appName) {
         <v-list-item-subtitle>
           {{ modeLabel(entry.mode) }} · {{ entry.completed }}/{{ entry.total }} apps complete · {{ entry.failed }} failed · finished {{ formatTime(entry.finishedAt || entry.startedAt) }}
         </v-list-item-subtitle>
+
+        <template v-if="totalRollbackHints(entry)" #append>
+          <v-btn
+            color="brown"
+            size="small"
+            title="Copy the captured before and after image references for this completed run."
+            variant="text"
+            @click="$emit('copy-rollback', entry)"
+          >
+            Copy rollback hints
+          </v-btn>
+        </template>
       </v-list-item>
     </v-list>
 
@@ -285,6 +335,29 @@ function appSummary(operation, appName) {
 .summary-text {
   margin: 0.55rem 0 0;
   opacity: 0.8;
+}
+
+.rollback-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.rollback-row {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.rollback-arrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.rollback-more {
+  margin: 0.2rem 0 0;
+  opacity: 0.72;
 }
 
 .activity-log {
