@@ -6,6 +6,8 @@
   --orchard-project-card-bg: rgba(247, 242, 234, 0.84);
   --orchard-project-card-stopped-bg: rgba(235, 229, 220, 0.58);
   --orchard-project-card-stopped-border: rgba(132, 140, 140, 0.14);
+  --orchard-project-card-degraded-tint: rgba(201, 61, 57, 0.12);
+  --orchard-project-card-degraded-border: rgba(201, 61, 57, 0.38);
 }
 
 html {
@@ -62,4 +64,6 @@ body::after {
   --orchard-project-card-bg: rgba(34, 39, 23, 0.82);
   --orchard-project-card-stopped-bg: rgba(34, 39, 23, 0.42);
   --orchard-project-card-stopped-border: rgba(156, 199, 91, 0.1);
+  --orchard-project-card-degraded-tint: rgba(232, 116, 92, 0.18);
+  --orchard-project-card-degraded-border: rgba(232, 116, 92, 0.5);
 }

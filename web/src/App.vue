@@ -140,13 +140,13 @@ const {
 }
 
 .project-grid {
-  column-gap: 0.9rem;
-  column-width: 220px;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .project-cell {
-  break-inside: avoid;
-  margin-bottom: 0.9rem;
+  min-width: 0;
 }
 
 .empty-card {
@@ -172,13 +172,13 @@ const {
 
 @media (max-width: 1260px) {
   .project-grid {
-    column-width: 210px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   }
 }
 
 @media (max-width: 780px) {
   .project-grid {
-    column-count: 1;
+    grid-template-columns: 1fr;
   }
 
   .empty-card {

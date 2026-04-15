@@ -49,7 +49,15 @@ const actionDisabled = computed(() => props.busy || props.disabled || props.proj
 </script>
 
 <template>
-  <v-card :class="['project-card', { 'project-card-stopped': isProjectStopped() }]">
+  <v-card
+    :class="[
+      'project-card',
+      {
+        'project-card-stopped': isProjectStopped(),
+        'project-card-degraded': project.status === 'degraded',
+      },
+    ]"
+  >
     <div class="project-topline">
       <div>
         <div class="d-flex align-center ga-2 flex-wrap">
@@ -229,6 +237,14 @@ const actionDisabled = computed(() => props.busy || props.disabled || props.proj
   background: var(--orchard-project-card-stopped-bg);
   border-color: var(--orchard-project-card-stopped-border);
   opacity: 0.72;
+}
+
+.project-card-degraded {
+  background:
+    linear-gradient(180deg, var(--orchard-project-card-degraded-tint), transparent 42%),
+    var(--orchard-project-card-bg);
+  border-color: var(--orchard-project-card-degraded-border);
+  box-shadow: inset 0 0 0 1px var(--orchard-project-card-degraded-border);
 }
 
 .project-topline {

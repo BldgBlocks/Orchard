@@ -44,24 +44,24 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
         label="Status filter"
         @update:model-value="emit('update:statusFilter', $event)"
       />
-      <v-btn
-        :disabled="!hasSelection"
-        title="Clear the saved batch target selection and go back to running against all apps."
-        variant="text"
-        @click="emit('clear-selection')"
-      >
-        Clear saved targets
-      </v-btn>
-    </div>
-    <div class="toolbar-actions">
-      <v-btn
-        :disabled="!hasVisibleProjects"
-        title="Select every currently visible app after search and status filters are applied."
-        variant="text"
-        @click="emit('select-visible')"
-      >
-        Select visible
-      </v-btn>
+      <div class="toolbar-actions">
+        <v-btn
+          :disabled="!hasVisibleProjects"
+          title="Select every currently visible app after search and status filters are applied."
+          variant="text"
+          @click="emit('select-visible')"
+        >
+          Select visible
+        </v-btn>
+        <v-btn
+          :disabled="!hasSelection"
+          title="Clear the saved batch target selection and go back to running against all apps."
+          variant="text"
+          @click="emit('clear-selection')"
+        >
+          Clear saved targets
+        </v-btn>
+      </div>
     </div>
     <p class="toolbar-note">
       Card selection is persisted and becomes the default target for batch and scheduled runs.
@@ -90,15 +90,17 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
   flex: 1 1 0;
 }
 
+.toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
 .toolbar-note {
   margin: 0.85rem 0 0;
   opacity: 0.72;
-}
-
-.toolbar-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
 }
 
 @media (max-width: 780px) {
@@ -107,10 +109,8 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
   }
 
   .toolbar-actions {
+    flex: 1 1 auto;
     justify-content: stretch;
-  }
-
-  .toolbar-actions > * {
     width: 100%;
   }
 
