@@ -1,4 +1,6 @@
 <script setup>
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
 import ActivityPanel from './components/ActivityPanel.vue';
 import BatchControls from './components/BatchControls.vue';
 import DashboardHero from './components/DashboardHero.vue';
@@ -47,6 +49,87 @@ const {
   toggleTheme,
   validation,
 } = useOrchardDashboard();
+
+const projectGrid = ref(null);
+const projectCellElements = new Map();
+let masonryObserver = null;
+let masonryFrame = 0;
+
+function applyMasonrySpan(cell) {
+  const gridElement = projectGrid.value;
+  if (!gridElement || !cell) {
+    return;
+  }
+
+  const gridStyles = window.getComputedStyle(gridElement);
+  const rowGap = Number.parseFloat(gridStyles.rowGap || '0');
+  const autoRowHeight = Number.parseFloat(gridStyles.gridAutoRows || '1');
+  const contentHeight = cell.getBoundingClientRect().height;
+  const span = Math.max(1, Math.ceil((contentHeight + rowGap) / (autoRowHeight + rowGap)));
+
+  cell.style.gridRowEnd = `span ${span}`;
+}
+
+function scheduleMasonryLayout() {
+  if (masonryFrame) {
+    cancelAnimationFrame(masonryFrame);
+  }
+
+  masonryFrame = requestAnimationFrame(() => {
+    masonryFrame = 0;
+    projectCellElements.forEach((cell) => applyMasonrySpan(cell));
+  });
+}
+
+function setProjectCellRef(projectId, element) {
+  const previousElement = projectCellElements.get(projectId);
+
+  if (previousElement && masonryObserver) {
+    masonryObserver.unobserve(previousElement);
+  }
+
+  if (!element) {
+    projectCellElements.delete(projectId);
+    return;
+  }
+
+  projectCellElements.set(projectId, element);
+
+  if (masonryObserver) {
+    masonryObserver.observe(element);
+  }
+
+  scheduleMasonryLayout();
+}
+
+onMounted(() => {
+  masonryObserver = new ResizeObserver(() => {
+    scheduleMasonryLayout();
+  });
+
+  if (projectGrid.value) {
+    masonryObserver.observe(projectGrid.value);
+  }
+
+  window.addEventListener('resize', scheduleMasonryLayout);
+  void nextTick().then(() => {
+    scheduleMasonryLayout();
+  });
+});
+
+onBeforeUnmount(() => {
+  if (masonryFrame) {
+    cancelAnimationFrame(masonryFrame);
+  }
+
+  masonryObserver?.disconnect();
+  window.removeEventListener('resize', scheduleMasonryLayout);
+});
+
+watch(filteredProjects, async () => {
+  await nextTick();
+  scheduleMasonryLayout();
+}, { flush: 'post' });
 </script>
 
 <template>
@@ -95,8 +178,13 @@ const {
           The current work path is not valid inside the container. Mount the correct host directory and update settings.
         </v-alert>
 
-        <div class="project-grid mt-4">
-          <div v-for="project in filteredProjects" :key="project.id" class="project-cell">
+        <div ref="projectGrid" class="project-grid mt-4">
+          <div
+            v-for="project in filteredProjects"
+            :key="project.id"
+            :ref="(element) => setProjectCellRef(project.id, element)"
+            class="project-cell"
+          >
             <ProjectCard
               :busy="isProjectBusy(project.id)"
               :disabled="Boolean(config?.skipSelfProject && project.isSelfProject)"
@@ -142,10 +230,13 @@ const {
 .project-grid {
   display: grid;
   gap: 0.9rem;
+  grid-auto-rows: 8px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: start;
 }
 
 .project-cell {
+  align-self: start;
   min-width: 0;
 }
 
