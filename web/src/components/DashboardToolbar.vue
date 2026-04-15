@@ -64,7 +64,7 @@ const emit = defineEmits(['update:search', 'update:statusFilter', 'clear-selecti
       </v-btn>
     </div>
     <p class="toolbar-note">
-      Card selection is persisted becomes the default target for batch and scheduled runs.
+      Card selection is persisted and becomes the default target for batch and scheduled runs.
     </p>
   </v-card>
 </template>
