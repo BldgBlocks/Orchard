@@ -112,6 +112,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
     if (mode === 'stop-only') {
       appendProjectLog(operationId, app, `${targetLabel}: stopping compose app.`);
       await runComposeCommand(composeTarget.absolutePath, ['down'], {
+        composeFileName: composeTarget.composeFileName,
         signal,
         onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
       });
@@ -120,6 +121,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
     } else if (mode === 'start-only') {
       appendProjectLog(operationId, app, `${targetLabel}: starting compose app in detached mode.`);
       await runComposeCommand(composeTarget.absolutePath, ['up', '-d'], {
+        composeFileName: composeTarget.composeFileName,
         signal,
         onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
       });
@@ -137,6 +139,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
       beforeSnapshot = await captureComposeRollbackSnapshot(composeTarget, { signal });
       appendProjectLog(operationId, app, `${targetLabel}: pulling latest images before restart.`);
       await runComposeCommand(composeTarget.absolutePath, ['pull', '-q'], {
+        composeFileName: composeTarget.composeFileName,
         signal,
         onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
       });
@@ -151,6 +154,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
       beforeSnapshot = await captureComposeRollbackSnapshot(composeTarget, { signal });
       appendProjectLog(operationId, app, `${targetLabel}: checking for image updates.`);
       const pullResult = await runComposeCommand(composeTarget.absolutePath, ['pull'], {
+        composeFileName: composeTarget.composeFileName,
         signal,
         onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
       });
@@ -180,6 +184,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
 
     appendProjectLog(operationId, app, `${targetLabel}: stopping compose stack.`);
     await runComposeCommand(composeTarget.absolutePath, ['down'], {
+      composeFileName: composeTarget.composeFileName,
       signal,
       onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
     });
@@ -190,6 +195,7 @@ async function processComposeTarget({ operationId, app, composeTarget, mode, sig
 
     appendProjectLog(operationId, app, `${targetLabel}: starting compose stack in detached mode.`);
     await runComposeCommand(composeTarget.absolutePath, ['up', '-d'], {
+      composeFileName: composeTarget.composeFileName,
       signal,
       onOutput: (entry) => appendProjectLog(operationId, app, `${targetLabel}: ${entry.message}`, entry.level),
     });

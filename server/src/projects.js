@@ -240,6 +240,21 @@ function commandText(args) {
   return `docker compose ${args.join(' ')}`;
 }
 
+function buildComposeArgs(args, { cwd, composeFileName } = {}) {
+  const resolvedArgs = [];
+
+  if (cwd) {
+    resolvedArgs.push('--project-directory', cwd);
+  }
+
+  if (cwd && composeFileName) {
+    resolvedArgs.push('-f', path.join(cwd, composeFileName));
+  }
+
+  resolvedArgs.push(...args);
+  return resolvedArgs;
+}
+
 function normalizeLines(value) {
   return value
     .split('\n')
@@ -634,9 +649,13 @@ async function walkForProjects(rootPath, maxDepth) {
   return results;
 }
 
-export async function runComposeCommand(cwd, args, { signal, onOutput } = {}) {
+export async function runComposeCommand(cwd, args, { composeFileName, signal, onOutput } = {}) {
   const resolvedWorkingDirectory = await resolveComposeWorkingDirectory(cwd);
   const resolvedCommandText = commandText(args);
+  const composeArgs = buildComposeArgs(args, {
+    cwd: resolvedWorkingDirectory.cwd,
+    composeFileName,
+  });
   onOutput?.({ level: 'command', message: `$ ${resolvedCommandText}` });
   if (resolvedWorkingDirectory.mapped) {
     onOutput?.({
@@ -652,7 +671,7 @@ export async function runComposeCommand(cwd, args, { signal, onOutput } = {}) {
   const dockerEnvironment = buildDockerEnvironment();
 
   return new Promise((resolve, reject) => {
-    const child = spawn('docker', ['compose', ...args], {
+    const child = spawn('docker', ['compose', ...composeArgs], {
       cwd: resolvedWorkingDirectory.cwd,
       env: dockerEnvironment,
       signal,
@@ -788,8 +807,8 @@ export function hasImageUpdates(output = '') {
 async function inspectProject(project) {
   const manifestInfo = await inspectComposeManifest(project);
   const [servicesResult, psResult] = await Promise.all([
-    runComposeCommand(project.absolutePath, ['config', '--services']).catch(toCommandResult),
-    runComposeCommand(project.absolutePath, ['ps', '-a', '--format', 'json']).catch(toCommandResult),
+    runComposeCommand(project.absolutePath, ['config', '--services'], { composeFileName: project.composeFileName }).catch(toCommandResult),
+    runComposeCommand(project.absolutePath, ['ps', '-a', '--format', 'json'], { composeFileName: project.composeFileName }).catch(toCommandResult),
   ]);
 
   const serviceNames = servicesResult.ok ? normalizeLines(servicesResult.stdout) : [];
@@ -847,6 +866,7 @@ export async function discoverProjects(settings) {
 
 export async function captureComposeRollbackSnapshot(composeTarget, { signal } = {}) {
   const psResult = await runComposeCommand(composeTarget.absolutePath, ['ps', '-a', '--format', 'json'], {
+    composeFileName: composeTarget.composeFileName,
     signal,
   }).catch(toCommandResult);
 
