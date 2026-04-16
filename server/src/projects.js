@@ -43,6 +43,8 @@ const PASSTHROUGH_ENV_KEYS = new Set([
   'https_proxy',
   'no_proxy',
 ]);
+const mountAliasCache = new Map();
+let selfMountsPromise = null;
 
 function toShellPath(relativePath) {
   return relativePath && relativePath !== '.' ? `./${relativePath}` : './';
@@ -56,6 +58,149 @@ function buildDockerEnvironment() {
         || key.startsWith('DOCKER_'),
     ),
   );
+}
+
+function isSubpath(parentPath, childPath) {
+  const relativePath = path.relative(parentPath, childPath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+
+async function getSelfMounts() {
+  if (selfMountsPromise) {
+    return selfMountsPromise;
+  }
+
+  selfMountsPromise = new Promise((resolve) => {
+    if (!SELF_CONTAINER_NAME) {
+      resolve([]);
+      return;
+    }
+
+    const child = spawn('docker', ['inspect', SELF_CONTAINER_NAME, '--format', '{{json .Mounts}}'], {
+      env: buildDockerEnvironment(),
+    });
+
+    let stdout = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.on('error', () => {
+      resolve([]);
+    });
+
+    child.on('close', (exitCode) => {
+      if (exitCode !== 0) {
+        resolve([]);
+        return;
+      }
+
+      try {
+        const mounts = JSON.parse(stdout.trim() || '[]');
+        resolve(
+          Array.isArray(mounts)
+            ? mounts
+              .map((mount) => ({
+                source: typeof mount?.Source === 'string' ? path.resolve(mount.Source) : '',
+                destination: typeof mount?.Destination === 'string' ? path.resolve(mount.Destination) : '',
+              }))
+              .filter((mount) => mount.source && mount.destination)
+              .sort((left, right) => right.destination.length - left.destination.length)
+            : [],
+        );
+      } catch {
+        resolve([]);
+      }
+    });
+  });
+
+  return selfMountsPromise;
+}
+
+function mapContainerPathToHost(containerPath, mounts) {
+  const resolvedContainerPath = path.resolve(containerPath);
+
+  for (const mount of mounts) {
+    if (!isSubpath(mount.destination, resolvedContainerPath)) {
+      continue;
+    }
+
+    const relativePath = path.relative(mount.destination, resolvedContainerPath);
+    return {
+      containerRoot: mount.destination,
+      hostRoot: mount.source,
+      hostPath: relativePath ? path.join(mount.source, relativePath) : mount.source,
+    };
+  }
+
+  return null;
+}
+
+async function ensureMountAlias(hostRoot, containerRoot) {
+  if (hostRoot === containerRoot) {
+    return;
+  }
+
+  const cacheKey = `${hostRoot}\u0000${containerRoot}`;
+  if (mountAliasCache.has(cacheKey)) {
+    return mountAliasCache.get(cacheKey);
+  }
+
+  const pendingAlias = (async () => {
+    try {
+      const existingEntry = await fs.lstat(hostRoot).catch(() => null);
+      if (existingEntry) {
+        const [hostRealPath, containerRealPath] = await Promise.all([
+          fs.realpath(hostRoot).catch(() => null),
+          fs.realpath(containerRoot).catch(() => null),
+        ]);
+
+        if (hostRealPath && containerRealPath && hostRealPath === containerRealPath) {
+          return;
+        }
+
+        throw new Error('Host workspace path already exists inside Orchard and does not point at the mounted workspace.');
+      }
+
+      await fs.mkdir(path.dirname(hostRoot), { recursive: true });
+      await fs.symlink(containerRoot, hostRoot, 'dir');
+    } catch (error) {
+      mountAliasCache.delete(cacheKey);
+      throw error;
+    }
+  })();
+
+  mountAliasCache.set(cacheKey, pendingAlias);
+  return pendingAlias;
+}
+
+async function resolveComposeWorkingDirectory(cwd) {
+  const mounts = await getSelfMounts();
+  const mappedPath = mapContainerPathToHost(cwd, mounts);
+
+  if (!mappedPath) {
+    return { cwd };
+  }
+
+  if (mappedPath.hostPath === path.resolve(cwd)) {
+    return { cwd: mappedPath.hostPath };
+  }
+
+  try {
+    await ensureMountAlias(mappedPath.hostRoot, mappedPath.containerRoot);
+    return {
+      cwd: mappedPath.hostPath,
+      mapped: true,
+      containerPath: path.resolve(cwd),
+      hostPath: mappedPath.hostPath,
+    };
+  } catch (error) {
+    return {
+      cwd,
+      warning: `Unable to mirror the host workspace path for compose execution. Relative bind mounts may resolve incorrectly. ${sanitizeSensitiveText(error.message)}`,
+    };
+  }
 }
 
 export function sanitizeSensitiveText(value = '') {
@@ -490,13 +635,25 @@ async function walkForProjects(rootPath, maxDepth) {
 }
 
 export async function runComposeCommand(cwd, args, { signal, onOutput } = {}) {
+  const resolvedWorkingDirectory = await resolveComposeWorkingDirectory(cwd);
   const resolvedCommandText = commandText(args);
   onOutput?.({ level: 'command', message: `$ ${resolvedCommandText}` });
+  if (resolvedWorkingDirectory.mapped) {
+    onOutput?.({
+      level: 'info',
+      message: `Using host-mirrored compose path ${sanitizeSensitiveText(resolvedWorkingDirectory.hostPath)} for ${sanitizeSensitiveText(resolvedWorkingDirectory.containerPath)}.`,
+    });
+  } else if (resolvedWorkingDirectory.warning) {
+    onOutput?.({
+      level: 'warn',
+      message: resolvedWorkingDirectory.warning,
+    });
+  }
   const dockerEnvironment = buildDockerEnvironment();
 
   return new Promise((resolve, reject) => {
     const child = spawn('docker', ['compose', ...args], {
-      cwd,
+      cwd: resolvedWorkingDirectory.cwd,
       env: dockerEnvironment,
       signal,
     });
