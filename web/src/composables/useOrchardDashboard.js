@@ -3,6 +3,47 @@ import { useTheme } from 'vuetify';
 
 import { api } from '../api';
 
+const BATCH_ACTIONS = [
+  {
+    value: 'smart',
+    label: 'Smart Sweep',
+    description: 'Pull first and restart only when newer image layers were actually downloaded.',
+    commandPreview: 'docker compose pull -> down -> up -d',
+  },
+  {
+    value: 'force-update',
+    label: 'Force Update',
+    description: 'Always pull latest images, then cycle the stack.',
+    commandPreview: 'docker compose pull -q -> down -> up -d',
+  },
+  {
+    value: 'restart-only',
+    label: 'Restart Only',
+    description: 'Use the existing images and perform a plain restart.',
+    commandPreview: 'docker compose down -> up -d',
+  },
+  {
+    value: 'start-only',
+    label: 'Start All',
+    description: 'Start each selected app in detached mode without pulling new images.',
+    commandPreview: 'docker compose up -d',
+  },
+  {
+    value: 'stop-only',
+    label: 'Stop All',
+    description: 'Stop each selected app cleanly so containers and mounted paths can be released.',
+    commandPreview: 'docker compose down',
+  },
+];
+
+const MODE_LABELS = {
+  smart: 'Smart Sweep',
+  'force-update': 'Force Update',
+  'restart-only': 'Restart Only',
+  'start-only': 'Start All',
+  'stop-only': 'Stop All',
+};
+
 export function useOrchardDashboard() {
   const theme = useTheme();
 
@@ -65,34 +106,15 @@ export function useOrchardDashboard() {
   );
 
   const actionDeck = computed(() => {
-    const fallback = [
-      {
-        value: 'smart',
-        label: 'Smart Sweep',
-        description: 'Pull first and restart only when newer image layers were actually downloaded.',
-        commandPreview: 'docker compose pull -> down -> up -d',
-      },
-      {
-        value: 'force-update',
-        label: 'Force Update',
-        description: 'Always pull latest images, then cycle the stack.',
-        commandPreview: 'docker compose pull -q -> down -> up -d',
-      },
-      {
-        value: 'restart-only',
-        label: 'Restart Only',
-        description: 'Use the existing images and perform a plain restart.',
-        commandPreview: 'docker compose down -> up -d',
-      },
-    ];
-
     const colorMap = {
       smart: 'primary',
       'force-update': 'secondary',
       'restart-only': 'warning',
+      'start-only': 'success',
+      'stop-only': 'error',
     };
 
-    return (modes.value.length ? modes.value : fallback).map((entry) => ({
+    return BATCH_ACTIONS.map((entry) => ({
       ...entry,
       color: colorMap[entry.value] || 'primary',
     }));
@@ -401,10 +423,12 @@ export function useOrchardDashboard() {
         maxParallelJobs: config.value?.maxParallelJobs,
       });
 
+      const modeLabel = MODE_LABELS[mode] || mode.replaceAll('-', ' ');
+
       notify(
         payload.skippedSelfProjects
-          ? `Queued ${pluralize(payload.queuedProjects, 'app')} for ${mode.replace('-', ' ')} and skipped ${pluralize(payload.skippedSelfProjects, 'self app')}.`
-          : `Queued ${pluralize(payload.queuedProjects, 'app')} for ${mode.replace('-', ' ')}.`,
+          ? `Queued ${pluralize(payload.queuedProjects, 'app')} for ${modeLabel} and skipped ${pluralize(payload.skippedSelfProjects, 'self app')}.`
+          : `Queued ${pluralize(payload.queuedProjects, 'app')} for ${modeLabel}.`,
         'success',
       );
       await fetchActivity();

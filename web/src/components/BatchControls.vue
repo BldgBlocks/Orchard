@@ -28,7 +28,7 @@ defineEmits(['run-batch']);
         <div class="section-header">
           <div>
             <p class="eyebrow">Batch Controls</p>
-            <h2>Sweep {{ targetLabel }}</h2>
+            <h2>Manage {{ targetLabel }}</h2>
           </div>
           <v-chip variant="outlined">
             {{ targetCount }} target{{ targetCount === 1 ? '' : 's' }}

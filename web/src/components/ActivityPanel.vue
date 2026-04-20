@@ -19,6 +19,8 @@ function modeLabel(mode) {
     smart: 'Smart Sweep',
     'force-update': 'Force Update',
     'restart-only': 'Restart Only',
+    'start-only': 'Start All',
+    'stop-only': 'Stop All',
   }[mode] || mode;
 }
 
