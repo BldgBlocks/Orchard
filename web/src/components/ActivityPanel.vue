@@ -309,41 +309,43 @@ function closeLogs() {
             <StatusChip :status="entry.status" />
           </div>
 
-          <div class="history-copy">
-            <strong>{{ entry.label }}</strong>
-            <p class="history-subtitle">
-              {{ modeLabel(entry.mode) }} · {{ operationProgressText(entry) }} · {{ entry.failed }} failed · finished {{ formatDateTime(entry.finishedAt || entry.startedAt) }}
-            </p>
-          </div>
+          <div class="history-body">
+            <div class="history-copy">
+              <strong>{{ entry.label }}</strong>
+              <p class="history-subtitle">
+                {{ modeLabel(entry.mode) }} · {{ operationProgressText(entry) }} · {{ entry.failed }} failed · finished {{ formatDateTime(entry.finishedAt || entry.startedAt) }}
+              </p>
+            </div>
 
-          <div class="history-actions">
-            <v-btn
-              size="small"
-              title="Open the persisted log lines for this completed run in a larger dialog."
-              variant="text"
-              @click="openLogs(entry)"
-            >
-              Show logs
-            </v-btn>
-            <v-btn
-              v-if="hasUpdatedProjects(entry)"
-              size="small"
-              title="Show which apps were updated in this run."
-              variant="text"
-              @click="toggleHistoryExpanded(entry.id)"
-            >
-              {{ historyExpanded(entry.id) ? 'Hide updated apps' : `Show ${updatedProjects(entry).length} updated app${updatedProjects(entry).length === 1 ? '' : 's'}` }}
-            </v-btn>
-            <v-btn
-              v-if="totalRollbackHints(entry)"
-              color="brown"
-              size="small"
-              title="Copy the captured before and after image references for this completed run."
-              variant="text"
-              @click="$emit('copy-rollback', entry)"
-            >
-              Copy rollback hints
-            </v-btn>
+            <div class="history-actions">
+              <v-btn
+                size="small"
+                title="Open the persisted log lines for this completed run in a larger dialog."
+                variant="text"
+                @click="openLogs(entry)"
+              >
+                Show logs
+              </v-btn>
+              <v-btn
+                v-if="hasUpdatedProjects(entry)"
+                size="small"
+                title="Show which apps were updated in this run."
+                variant="text"
+                @click="toggleHistoryExpanded(entry.id)"
+              >
+                {{ historyExpanded(entry.id) ? 'Hide updated apps' : `Show ${updatedProjects(entry).length} updated app${updatedProjects(entry).length === 1 ? '' : 's'}` }}
+              </v-btn>
+              <v-btn
+                v-if="totalRollbackHints(entry)"
+                color="brown"
+                size="small"
+                title="Copy the captured before and after image references for this completed run."
+                variant="text"
+                @click="$emit('copy-rollback', entry)"
+              >
+                Copy rollback hints
+              </v-btn>
+            </div>
           </div>
         </div>
 
@@ -565,11 +567,17 @@ function closeLogs() {
   align-items: flex-start;
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .history-status {
   padding-top: 0.1rem;
+}
+
+.history-body {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
 .history-copy {
@@ -586,7 +594,7 @@ function closeLogs() {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .history-expanded {
