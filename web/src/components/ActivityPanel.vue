@@ -156,8 +156,8 @@ function closeLogs() {
 
     <div v-if="activity.activeOperations.length" class="operation-list">
       <v-card v-for="operation in activity.activeOperations" :key="operation.id" class="operation-card">
-        <div class="d-flex align-start justify-space-between ga-4 flex-wrap">
-          <div>
+        <div class="operation-header">
+          <div class="operation-copy">
             <div class="d-flex align-center ga-2 flex-wrap">
               <StatusChip :status="operation.status" />
               <strong>{{ operation.label }}</strong>
@@ -170,7 +170,7 @@ function closeLogs() {
             </p>
           </div>
 
-          <div class="d-flex ga-2 flex-wrap justify-end">
+          <div class="operation-actions">
             <v-btn
               size="small"
               title="Open the persisted log lines for this run in a larger dialog."
@@ -433,6 +433,26 @@ function closeLogs() {
   padding: 1rem;
 }
 
+.operation-header {
+  align-items: flex-start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.operation-copy {
+  min-width: 0;
+}
+
+.operation-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .project-mini-grid {
   display: flex;
   flex-wrap: wrap;
@@ -658,10 +678,12 @@ function closeLogs() {
   .summary-grid,
   .log-line,
   .modal-log-line,
-  .history-main {
+  .history-main,
+  .operation-header {
     grid-template-columns: 1fr;
   }
 
+  .operation-actions,
   .history-actions {
     justify-content: flex-start;
   }
