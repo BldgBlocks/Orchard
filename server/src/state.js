@@ -5,7 +5,9 @@ import { DATA_DIR } from './config.js';
 
 const HISTORY_PATH = path.join(DATA_DIR, 'history.json');
 const HISTORY_LIMIT = 10;
-const LOG_LIMIT = 160;
+const MAX_PERSISTED_LOG_LINES = 2000;
+const MAX_PERSISTED_LOG_BYTES = 512 * 1024;
+const ACTIVE_LOG_SNAPSHOT_LIMIT = 120;
 
 const clients = new Set();
 const activeOperations = new Map();
@@ -15,7 +17,29 @@ function sortByDateDescending(left, right) {
   return new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime();
 }
 
+function cloneLogsForClient(logs, limit = logs.length) {
+  return logs.slice(-limit).map(({ byteSize, ...entry }) => entry);
+}
+
+function buildLogCapture(operation, visibleLines) {
+  const storedLines = operation.logs.length;
+  const totalLines = operation.totalLogLines || storedLines;
+  const droppedLines = operation.droppedLogLines || Math.max(totalLines - storedLines, 0);
+
+  return {
+    visibleLines,
+    storedLines,
+    totalLines,
+    droppedLines,
+    truncated: droppedLines > 0,
+    lineLimit: MAX_PERSISTED_LOG_LINES,
+    byteLimit: MAX_PERSISTED_LOG_BYTES,
+  };
+}
+
 function serializeOperation(operation) {
+  const visibleLogs = cloneLogsForClient(operation.logs, ACTIVE_LOG_SNAPSHOT_LIMIT);
+
   return {
     id: operation.id,
     label: operation.label,
@@ -31,7 +55,8 @@ function serializeOperation(operation) {
     projects: Object.values(operation.projects).sort((left, right) =>
       left.name.localeCompare(right.name),
     ),
-    logs: operation.logs.slice(-24),
+    logs: visibleLogs,
+    logCapture: buildLogCapture(operation, visibleLogs.length),
   };
 }
 
@@ -62,9 +87,12 @@ async function persistHistory() {
 }
 
 function toHistoryEntry(operation) {
+  const historyLogs = cloneLogsForClient(operation.logs);
+
   return {
     ...serializeOperation(operation),
-    logs: operation.logs.slice(-18),
+    logs: historyLogs,
+    logCapture: buildLogCapture(operation, historyLogs.length),
   };
 }
 
@@ -118,7 +146,10 @@ export function createOperation({ id, label, kind, mode, projects }) {
     completed: 0,
     updated: 0,
     failed: 0,
+    droppedLogLines: 0,
     logs: [],
+    logBytes: 0,
+    totalLogLines: 0,
     projects: Object.fromEntries(
       projects.map((project) => [
         project.id,
@@ -198,16 +229,35 @@ export function appendProjectRollbackHints(operationId, projectId, rollbackHints
 
 export function appendOperationLog(operationId, entry) {
   return updateOperation(operationId, (operation) => {
-    operation.logs.push({
+    const logEntry = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       level: entry.level || 'info',
       source: entry.source || 'system',
       message: entry.message,
-    });
+    };
 
-    if (operation.logs.length > LOG_LIMIT) {
-      operation.logs = operation.logs.slice(-LOG_LIMIT);
+    logEntry.byteSize = Buffer.byteLength(
+      `${logEntry.timestamp}\t${logEntry.level}\t${logEntry.source}\t${logEntry.message}`,
+      'utf8',
+    );
+
+    operation.logs.push(logEntry);
+    operation.logBytes += logEntry.byteSize;
+    operation.totalLogLines += 1;
+
+    while (
+      operation.logs.length > MAX_PERSISTED_LOG_LINES
+      || operation.logBytes > MAX_PERSISTED_LOG_BYTES
+    ) {
+      const removedEntry = operation.logs.shift();
+
+      if (!removedEntry) {
+        break;
+      }
+
+      operation.logBytes = Math.max(0, operation.logBytes - (removedEntry.byteSize || 0));
+      operation.droppedLogLines += 1;
     }
   });
 }

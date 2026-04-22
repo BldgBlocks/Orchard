@@ -19,6 +19,7 @@ const logDialog = reactive({
   title: '',
   subtitle: '',
   logs: [],
+  capture: null,
 });
 
 function modeLabel(mode) {
@@ -134,11 +135,28 @@ function openLogs(entry) {
   logDialog.open = true;
   logDialog.title = entry.label;
   logDialog.subtitle = `${modeLabel(entry.mode)} · ${operationProgressText(entry)}`;
+  logDialog.capture = entry.logCapture || null;
   logDialog.logs = entry.logs || [];
 }
 
 function closeLogs() {
   logDialog.open = false;
+}
+
+function logCaptureText(capture) {
+  if (!capture) {
+    return '';
+  }
+
+  if (capture.truncated) {
+    return `Showing ${capture.visibleLines.toLocaleString()} of ${capture.totalLines.toLocaleString()} captured lines. Older lines were trimmed after this run hit the retention cap.`;
+  }
+
+  if (capture.visibleLines < capture.totalLines) {
+    return `Showing the most recent ${capture.visibleLines.toLocaleString()} of ${capture.totalLines.toLocaleString()} captured lines while this run is still active.`;
+  }
+
+  return `Showing all ${capture.totalLines.toLocaleString()} captured lines.`;
 }
 </script>
 
@@ -374,6 +392,7 @@ function closeLogs() {
             <p class="eyebrow">Run Logs</p>
             <h3>{{ logDialog.title }}</h3>
             <p class="log-dialog-subtitle">{{ logDialog.subtitle }}</p>
+            <p v-if="logCaptureText(logDialog.capture)" class="log-dialog-note">{{ logCaptureText(logDialog.capture) }}</p>
           </div>
           <v-btn
             icon="mdi-close"
@@ -645,6 +664,12 @@ function closeLogs() {
 .log-dialog-subtitle {
   margin: 0.4rem 0 0;
   opacity: 0.76;
+}
+
+.log-dialog-note {
+  margin: 0.55rem 0 0;
+  max-width: 52rem;
+  opacity: 0.82;
 }
 
 .log-dialog-body {
