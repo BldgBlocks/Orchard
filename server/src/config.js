@@ -70,6 +70,33 @@ function toNumber(value, fallback) {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
+function normalizeScheduledTime(value, fallback = '21:00') {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return fallback;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return fallback;
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function resolveScheduledSweepIntervalDays(input, fallback) {
+  if (input !== undefined && input !== null && input !== '') {
+    return clamp(toNumber(input, fallback), 0.01, 365);
+  }
+
+  return fallback;
+}
+
 const envDefaultMode = VALID_MODES.includes(process.env.DEFAULT_MODE)
   ? process.env.DEFAULT_MODE
   : 'smart';
@@ -78,6 +105,39 @@ const envScheduledMode = VALID_MODES.includes(process.env.SCHEDULED_SWEEP_MODE)
   ? process.env.SCHEDULED_SWEEP_MODE
   : envDefaultMode;
 
+const envScheduledSweepIntervalDays = clamp(
+  toNumber(process.env.SCHEDULED_SWEEP_INTERVAL_DAYS, 14),
+  0.01,
+  365,
+);
+
+const envScheduledSweepTime = normalizeScheduledTime(process.env.SCHEDULED_SWEEP_TIME, '21:00');
+
+function describeSettingsMigration(rawSettings) {
+  if (!rawSettings || typeof rawSettings !== 'object' || Array.isArray(rawSettings)) {
+    return null;
+  }
+
+  if (!Object.hasOwn(rawSettings, 'scheduledSweepIntervalMinutes')) {
+    return null;
+  }
+
+  return {
+    applied: true,
+    code: 'scheduled-sweep-safe-defaults',
+    title: 'Scheduled sweep defaults were safely changed',
+    message: 'Legacy minute-based scheduled sweep settings were migrated to the safer Orchard default of every 14 days at 9:00 PM.',
+  };
+}
+
+function shouldRewriteSettings(rawSettings, nextSettings, migration) {
+  if (migration?.applied) {
+    return true;
+  }
+
+  return JSON.stringify(rawSettings) !== JSON.stringify(nextSettings);
+}
+
 export const defaultSettings = Object.freeze({
   workPath: path.resolve(process.env.WORK_PATH || process.cwd()),
   scanDepth: clamp(toNumber(process.env.SCAN_DEPTH, 3), 1, 8),
@@ -85,11 +145,8 @@ export const defaultSettings = Object.freeze({
   autoRefreshSeconds: clamp(toNumber(process.env.AUTO_REFRESH_SECONDS, 30), 0, 600),
   defaultMode: envDefaultMode,
   scheduledSweepEnabled: toBoolean(process.env.SCHEDULED_SWEEP_ENABLED, false),
-  scheduledSweepIntervalMinutes: clamp(
-    toNumber(process.env.SCHEDULED_SWEEP_INTERVAL_MINUTES, 360),
-    1,
-    10080,
-  ),
+  scheduledSweepIntervalDays: envScheduledSweepIntervalDays,
+  scheduledSweepTime: envScheduledSweepTime,
   scheduledSweepMode: envScheduledMode,
   skipSelfProject: toBoolean(process.env.SKIP_SELF_PROJECT, true),
   batchTargetPaths: [],
@@ -106,6 +163,14 @@ export function sanitizeSettings(input = {}) {
   const scheduledSweepMode = VALID_MODES.includes(input.scheduledSweepMode)
     ? input.scheduledSweepMode
     : defaultSettings.scheduledSweepMode;
+  const scheduledSweepIntervalDays = resolveScheduledSweepIntervalDays(
+    input.scheduledSweepIntervalDays,
+    defaultSettings.scheduledSweepIntervalDays,
+  );
+  const scheduledSweepTime = normalizeScheduledTime(
+    input.scheduledSweepTime,
+    defaultSettings.scheduledSweepTime,
+  );
 
   return {
     workPath: path.resolve(
@@ -129,14 +194,8 @@ export function sanitizeSettings(input = {}) {
       input.scheduledSweepEnabled,
       defaultSettings.scheduledSweepEnabled,
     ),
-    scheduledSweepIntervalMinutes: clamp(
-      toNumber(
-        input.scheduledSweepIntervalMinutes,
-        defaultSettings.scheduledSweepIntervalMinutes,
-      ),
-      1,
-      10080,
-    ),
+    scheduledSweepIntervalDays,
+    scheduledSweepTime,
     scheduledSweepMode,
     skipSelfProject: toBoolean(input.skipSelfProject, defaultSettings.skipSelfProject),
     batchTargetPaths: toStringArray(input.batchTargetPaths, defaultSettings.batchTargetPaths),
@@ -144,11 +203,27 @@ export function sanitizeSettings(input = {}) {
 }
 
 export async function loadSettings() {
+  const payload = await loadSettingsWithMetadata();
+  return payload.settings;
+}
+
+export async function loadSettingsWithMetadata() {
   await ensureDataDir();
 
   try {
     const raw = await fs.readFile(SETTINGS_PATH, 'utf8');
-    return sanitizeSettings(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    const settings = sanitizeSettings(parsed);
+    const settingsMigration = describeSettingsMigration(parsed);
+
+    if (shouldRewriteSettings(parsed, settings, settingsMigration)) {
+      await fs.writeFile(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`);
+    }
+
+    return {
+      settings,
+      settingsMigration,
+    };
   } catch (error) {
     if (error.code !== 'ENOENT') {
       console.error(`Failed to read persisted settings, falling back to defaults. ${sanitizePathText(error.message)}`);
@@ -156,7 +231,10 @@ export async function loadSettings() {
 
     const settings = sanitizeSettings(defaultSettings);
     await fs.writeFile(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`);
-    return settings;
+    return {
+      settings,
+      settingsMigration: null,
+    };
   }
 }
 

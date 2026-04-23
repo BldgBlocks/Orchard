@@ -91,7 +91,8 @@ If you want a different test folder or port:
 - `MAX_PARALLEL_JOBS`: how many apps Orchard processes at once during batch actions; keep it modest unless your host is strong and your apps are independent
 - `AUTO_REFRESH_SECONDS`: dashboard polling interval for open browser sessions
 - `DEFAULT_MODE`: internal fallback only; Orchard uses this if an action request arrives without an explicit mode
-- `SCHEDULED_SWEEP_INTERVAL_MINUTES`: how often the built-in scheduler runs when enabled; `360` means every 6 hours
+- `SCHEDULED_SWEEP_INTERVAL_DAYS`: how often the built-in scheduler runs when enabled; the shipped safe default is `14`
+- `SCHEDULED_SWEEP_TIME`: local time Orchard uses for day-based scheduled sweeps; the shipped safe default is `21:00`
 - `SCHEDULED_SWEEP_MODE`: what kind of sweep the scheduler runs; leave this at `smart` unless you have a specific reason to force a different action style
 - `ACTION_QUEUE_LIMIT`: how many queued or running operations Orchard allows before it starts rejecting new ones; `50` is a deliberate safety cap, not a throughput target
 - `ACTION_COOLDOWN_MS`: minimum time between newly queued operations; `1000` ms helps absorb double-clicks and bursty requests
@@ -106,6 +107,14 @@ That means:
 - no cron job
 - no extra scheduler container
 - the schedule is visible in the app itself
+
+The scheduler defaults are intentionally conservative.
+
+Orchard manages Docker Compose apps that may pull fresh upstream artifacts, images, or dependency chains. For high-trust or security-sensitive services, "update immediately" is not a safe default. A supply-chain incident can be detected, discussed, and contained by the community long before it would have reached your host through a delayed schedule.
+
+Because of that, Orchard ships with a default scheduled sweep cadence of every 14 days at 9:00 PM instead of a short-term interval. The goal is to reduce the chance that Orchard becomes the first thing in your environment to pull a bad upstream release.
+
+If you want faster updates, you can still choose them explicitly. Orchard should make the safer posture easy and the riskier posture deliberate.
 
 ## Dev files
 

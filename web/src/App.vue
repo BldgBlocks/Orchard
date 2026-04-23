@@ -18,11 +18,13 @@ const {
   clearSelection,
   config,
   copyRollbackHints,
+  dismissMigrationBanner,
   dockerStatusText,
   filteredProjects,
   health,
   isProjectBusy,
   loadingProjects,
+  migrationBanner,
   modes,
   refreshAll,
   runBatch,
@@ -134,6 +136,19 @@ watch(filteredProjects, async () => {
   <v-app>
     <div class="app-shell">
       <v-container class="py-6">
+        <v-alert
+          v-if="migrationBanner"
+          class="mb-4 migration-banner"
+          closable
+          color="warning"
+          icon="mdi-shield-alert-outline"
+          variant="tonal"
+          @click:close="dismissMigrationBanner"
+        >
+          <v-alert-title>{{ migrationBanner.title }}</v-alert-title>
+          {{ migrationBanner.message }}
+        </v-alert>
+
         <DashboardHero
           :config="config"
           :docker-status-text="dockerStatusText"
@@ -255,6 +270,12 @@ watch(filteredProjects, async () => {
 .empty-card h3,
 .empty-card p {
   margin: 0;
+}
+
+.migration-banner {
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--orchard-panel-border);
+  box-shadow: var(--orchard-panel-shadow);
 }
 
 @media (max-width: 1260px) {

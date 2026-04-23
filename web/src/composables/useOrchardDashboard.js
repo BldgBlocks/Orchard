@@ -46,6 +46,7 @@ const MODE_LABELS = {
 
 export function useOrchardDashboard() {
   const theme = useTheme();
+  const migrationBanner = ref(null);
 
   const config = ref(null);
   const validation = ref(null);
@@ -98,6 +99,32 @@ export function useOrchardDashboard() {
       text,
       color,
     };
+  }
+
+  function dismissedMigrationKey(code) {
+    return `orchard:dismissed-migration:${code}`;
+  }
+
+  function applyMigrationBanner(migration) {
+    if (!migration?.applied || !migration.code) {
+      migrationBanner.value = null;
+      return;
+    }
+
+    if (localStorage.getItem(dismissedMigrationKey(migration.code)) === '1') {
+      migrationBanner.value = null;
+      return;
+    }
+
+    migrationBanner.value = migration;
+  }
+
+  function dismissMigrationBanner() {
+    if (migrationBanner.value?.code) {
+      localStorage.setItem(dismissedMigrationKey(migrationBanner.value.code), '1');
+    }
+
+    migrationBanner.value = null;
   }
 
   const currentTheme = computed(() => theme.global.name.value);
@@ -216,7 +243,16 @@ export function useOrchardDashboard() {
       return 'Off';
     }
 
-    return `Every ${config.value.scheduledSweepIntervalMinutes} min`;
+    const intervalDays = Number(config.value.scheduledSweepIntervalDays || 0);
+    const intervalLabel = Number.isInteger(intervalDays)
+      ? `${intervalDays} day${intervalDays === 1 ? '' : 's'}`
+      : `${intervalDays.toFixed(2).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1')} days`;
+
+    if (intervalDays < 1) {
+      return `Every ${intervalLabel}`;
+    }
+
+    return `Every ${intervalLabel} at ${config.value.scheduledSweepTime}`;
   });
 
   const schedulerNextRunLabel = computed(() => {
@@ -253,6 +289,9 @@ export function useOrchardDashboard() {
     validation.value = payload.validation;
     modes.value = payload.modes;
     scheduler.value = payload.scheduler;
+
+    applyMigrationBanner(payload.settingsMigration);
+
     resetAutoRefresh();
   }
 
@@ -502,11 +541,13 @@ export function useOrchardDashboard() {
     clearSelection,
     config,
     copyRollbackHints,
+    dismissMigrationBanner,
     dockerStatusText,
     filteredProjects,
     health,
     isProjectBusy,
     loadingProjects,
+    migrationBanner,
     modes,
     projects,
     refreshAll,

@@ -9,6 +9,7 @@ import {
   describeModes,
   isSafeTargetPath,
   loadSettings,
+  loadSettingsWithMetadata,
   saveSettings,
   VALID_MODES,
   validateWorkPath,
@@ -38,11 +39,12 @@ async function pathExists(targetPath) {
 }
 
 async function buildConfigPayload() {
-  const settings = await loadSettings();
+  const { settings, settingsMigration } = await loadSettingsWithMetadata();
   const validation = await validateWorkPath(settings.workPath);
 
   return {
     settings,
+    settingsMigration,
     validation,
     modes: describeModes(),
     scheduler: getSchedulerStatus(),

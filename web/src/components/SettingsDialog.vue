@@ -32,7 +32,8 @@ const localSettings = reactive({
   maxParallelJobs: 3,
   autoRefreshSeconds: 30,
   scheduledSweepEnabled: false,
-  scheduledSweepIntervalMinutes: 360,
+  scheduledSweepIntervalDays: 14,
+  scheduledSweepTime: '21:00',
   scheduledSweepMode: 'smart',
   skipSelfProject: true,
 });
@@ -109,14 +110,26 @@ function submit() {
           color="primary"
           inset
           label="Enable scheduled sweeps"
-          title="Turn Orchard's built-in scheduler on or off. When enabled, Orchard queues automatic sweeps on the selected interval."
+          title="Turn Orchard's built-in scheduler on or off. Safe defaults are designed to avoid being first to pull a fresh upstream release."
         />
         <v-text-field
-          v-model.number="localSettings.scheduledSweepIntervalMinutes"
-          label="Scheduled sweep interval (minutes)"
-          min="1"
-          title="How many minutes Orchard waits between automatic scheduled sweeps. Minimum 1 minute when scheduling is enabled."
+          v-model.number="localSettings.scheduledSweepIntervalDays"
+          hint="Safe default: 14 days. Decimals below 1 are allowed for faster cadences."
+          label="Scheduled sweep interval (days)"
+          min="0.01"
+          persistent-hint
+          step="0.01"
+          title="How many days Orchard waits before the next automatic scheduled sweep. Use longer intervals for safer default exposure to upstream releases."
           type="number"
+        />
+        <v-text-field
+          v-model="localSettings.scheduledSweepTime"
+          hint="Safe default: 21:00. Orchard aligns day-based schedules to this local time."
+          label="Scheduled sweep time"
+          persistent-hint
+          step="60"
+          title="Local time of day Orchard uses for day-based scheduled sweeps."
+          type="time"
         />
         <v-select
           v-model="localSettings.scheduledSweepMode"
@@ -136,7 +149,7 @@ function submit() {
       </div>
 
       <p class="settings-note">
-        Mount the host directory that contains your compose folders into the container, then point the work path at that mounted path. Scheduled sweeps use the app's built-in timer, not cron and not a Docker-native scheduler.
+        Mount the host directory that contains your compose folders into the container, then point the work path at that mounted path. Scheduled sweeps use the app's built-in timer, not cron and not a Docker-native scheduler. The shipped default is intentionally conservative: every 14 days at 9:00 PM.
       </p>
 
       <div class="d-flex justify-end ga-3 mt-4 flex-wrap">

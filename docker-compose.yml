@@ -16,7 +16,8 @@ services:
       AUTO_REFRESH_SECONDS: 30
       # Built-in scheduler configuration.
       SCHEDULED_SWEEP_ENABLED: false
-      SCHEDULED_SWEEP_INTERVAL_MINUTES: 360
+      SCHEDULED_SWEEP_INTERVAL_DAYS: 14
+      SCHEDULED_SWEEP_TIME: "21:00"
       SCHEDULED_SWEEP_MODE: smart
       # Queue protections for accidental double-clicks and duplicate bursts.
       ACTION_QUEUE_LIMIT: 50

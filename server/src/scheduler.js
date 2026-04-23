@@ -3,16 +3,65 @@ import { loadSettings, validateWorkPath } from './config.js';
 import { sanitizeSensitiveText } from './projects.js';
 import { hasActiveOperations } from './state.js';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 let timer = null;
 let schedulerState = {
   enabled: false,
-  intervalMinutes: 0,
+  intervalDays: 0,
+  timeOfDay: '21:00',
   mode: 'smart',
   nextRunAt: null,
   lastTriggeredAt: null,
   lastMessage: 'Scheduler disabled.',
   lastError: null,
 };
+
+function parseScheduledTime(value = '21:00') {
+  const match = String(value).match(/^(\d{2}):(\d{2})$/);
+  if (!match) {
+    return { hours: 21, minutes: 0 };
+  }
+
+  return {
+    hours: Number(match[1]),
+    minutes: Number(match[2]),
+  };
+}
+
+function formatIntervalDays(value) {
+  const rounded = Number(value);
+  if (!Number.isFinite(rounded)) {
+    return '14 days';
+  }
+
+  if (Math.abs(rounded - Math.round(rounded)) < 0.000001) {
+    const wholeDays = Math.round(rounded);
+    return `${wholeDays} day${wholeDays === 1 ? '' : 's'}`;
+  }
+
+  return `${rounded.toFixed(2).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1')} days`;
+}
+
+function computeNextRunAt(settings, now = new Date()) {
+  const intervalDays = Number(settings.scheduledSweepIntervalDays) || 14;
+  const delayMs = intervalDays * DAY_MS;
+
+  if (intervalDays < 1) {
+    return new Date(now.getTime() + delayMs);
+  }
+
+  const earliestRun = new Date(now.getTime() + delayMs);
+  const { hours, minutes } = parseScheduledTime(settings.scheduledSweepTime);
+  const candidate = new Date(earliestRun);
+  candidate.setHours(hours, minutes, 0, 0);
+
+  if (candidate.getTime() < earliestRun.getTime()) {
+    candidate.setDate(candidate.getDate() + 1);
+  }
+
+  return candidate;
+}
 
 function clearTimer() {
   if (timer) {
@@ -33,7 +82,8 @@ function scheduleNextRun(settings) {
 
   updateState({
     enabled: settings.scheduledSweepEnabled,
-    intervalMinutes: settings.scheduledSweepIntervalMinutes,
+    intervalDays: settings.scheduledSweepIntervalDays,
+    timeOfDay: settings.scheduledSweepTime,
     mode: settings.scheduledSweepMode,
   });
 
@@ -46,12 +96,15 @@ function scheduleNextRun(settings) {
     return getSchedulerStatus();
   }
 
-  const delayMs = settings.scheduledSweepIntervalMinutes * 60 * 1000;
-  const nextRunAt = new Date(Date.now() + delayMs).toISOString();
+  const nextRunDate = computeNextRunAt(settings);
+  const delayMs = Math.max(0, nextRunDate.getTime() - Date.now());
+  const nextRunAt = nextRunDate.toISOString();
 
   updateState({
     nextRunAt,
-    lastMessage: `Next scheduled sweep in ${settings.scheduledSweepIntervalMinutes} minute(s).`,
+    lastMessage: settings.scheduledSweepIntervalDays < 1
+      ? `Next scheduled sweep in ${formatIntervalDays(settings.scheduledSweepIntervalDays)}.`
+      : `Next scheduled sweep in ${formatIntervalDays(settings.scheduledSweepIntervalDays)} at ${settings.scheduledSweepTime}.`,
     lastError: null,
   });
 
