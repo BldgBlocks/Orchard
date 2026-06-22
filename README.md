@@ -35,6 +35,8 @@ Without the Docker socket, Orchard can still scan compose files from disk, but i
 - it cannot manage live Docker state reliably
 - actions are disabled
 
+<img src="https://github.com/BldgBlocks/Orchard/blob/main/dev/assets/orchard_apps.png" alt="apps">
+
 ## Quick start
 
 The root [docker-compose.yml](docker-compose.yml) is the deployment compose file.
