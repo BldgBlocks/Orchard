@@ -4,6 +4,8 @@ Orchard is a small self-hosted UI for folder-first Docker Compose maintenance.
 
 It is for people who keep apps in their own folders, want a clean overview, and want simple actions like update, restart, start, and stop without turning the whole thing into a heavy container platform.
 
+<img src="https://github.com/BldgBlocks/Orchard/blob/main/dev/assets/orchard_top.png"alt="top">
+
 ## What Orchard does
 
 - Scans a chosen folder for `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, and `compose.yaml`
